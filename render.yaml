@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: dc-clean-hands-api
+    runtime: python3
+    buildCommand: |
+      pip install --upgrade pip
+      pip install -r requirements.txt
+      playwright install-deps
+      playwright install chromium
+    startCommand: gunicorn railway_api:app -w 1 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT
+    plan: free
+    healthCheckPath: /_health
+    envVars:
+      - key: BREVO_API_KEY
+        sync: false
+      - key: FROM_EMAIL  
+        sync: false
+      - key: FROM_NAME
+        value: CleanHandsBot
+      - key: PLAYWRIGHT_BROWSERS_PATH
+        value: /opt/render/.cache/ms-playwright
+      - key: PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD
+        value: "1"

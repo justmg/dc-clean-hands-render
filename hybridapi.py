@@ -171,7 +171,7 @@ async def mock_clean_hands_workflow(notice: str, last4: str, session_id: str):
             "mode": "mock_fallback"
         }
 
-async def send_email_via_mailgun(to_email: str, subject: str, html_body: str, text_body: str, pdf_path=None):
+async def send_email_via_brevo(to_email: str, subject: str, html_body: str, text_body: str, pdf_path=None):
     """Send email via Mailgun API"""
     
     domain = os.getenv("MAILGUN_DOMAIN")
