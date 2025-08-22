@@ -7,7 +7,7 @@ services:
       pip install -r requirements.txt
       playwright install-deps
       playwright install chromium
-    startCommand: gunicorn railway_api:app -w 1 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT
+    startCommand: gunicorn render_api:app -w 1 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT
     plan: free
     healthCheckPath: /_health
     envVars:
