@@ -164,53 +164,50 @@ async def mock_clean_hands_workflow(notice: str, last4: str, session_id: str):
             "mode": "mock_fallback"
         }
 
-async def send_email_via_cloudmailin(to_email: str, subject: str, html_body: str, text_body: str, pdf_path=None):
-    """Send email via CloudMailin SMTP API"""
+async def send_email_via_mailgun(to_email: str, subject: str, html_body: str, text_body: str, pdf_path=None):
+    """Send email via Mailgun API"""
     
-    username = os.getenv("CLOUDMAILIN_SMTP_USERNAME")
-    api_token = os.getenv("CLOUDMAILIN_API_TOKEN") 
+    domain = os.getenv("MAILGUN_DOMAIN")
+    api_key = os.getenv("MAILGUN_API_KEY")
     from_email = os.getenv("FROM_EMAIL", "noreply@example.com")
     from_name = os.getenv("FROM_NAME", "Clean Hands Bot")
     
-    if not username or not api_token:
-        print("Missing CloudMailin credentials - email not sent")
-        return {"status": "error", "message": "Missing email credentials"}
+    if not domain or not api_key:
+        print("Missing Mailgun credentials - email not sent")
+        return {"status": "error", "message": "Missing Mailgun credentials"}
     
-    # CloudMailin SMTP API endpoint (production)
-    url = f"https://api.cloudmailin.com/api/v0.1/{username}/messages"
+    # Mailgun API endpoint
+    url = f"https://api.mailgun.net/v3/{domain}/messages"
     
-    # Prepare email data
+    # Prepare email data (form data format for Mailgun)
     data = {
         "from": f"{from_name} <{from_email}>",
-        "to": [to_email],  # Must be array format
+        "to": to_email,
         "subject": subject,
-        "plain": text_body,
+        "text": text_body,
         "html": html_body,
-        "test_mode": False,  # CRITICAL: Set to False for real email delivery
-        "tags": ["clean-hands-api", "automated"]
+        "o:tag": ["clean-hands-api", "automated"]
     }
     
-    headers = {
-        "Authorization": f"Bearer {api_token}",
-        "Content-Type": "application/json"
-    }
+    # Basic auth with api key
+    auth = ("api", api_key)
     
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(url, json=data, headers=headers)
+            response = await client.post(url, data=data, auth=auth)
             
-        print(f"Email API response: {response.status_code} - {response.text}")
+        print(f"Mailgun API response: {response.status_code} - {response.text}")
         
-        if response.status_code in [200, 202]:
+        if response.status_code == 200:
             print(f"Email sent successfully to {to_email}")
-            return {"status": "success", "message": "Email sent"}
+            return {"status": "success", "message": "Email sent via Mailgun"}
         else:
             print(f"Email failed: {response.status_code} - {response.text}")
-            return {"status": "error", "message": f"Email API error: {response.status_code}"}
+            return {"status": "error", "message": f"Mailgun API error: {response.status_code}"}
             
     except Exception as e:
-        print(f"Email error: {str(e)}")
-        return {"status": "error", "message": f"Email error: {str(e)}"}
+        print(f"Mailgun error: {str(e)}")
+        return {"status": "error", "message": f"Mailgun error: {str(e)}"}
 
 async def send_result_email(notice: str, last4: str, email: str, result: dict):
     """Send the clean hands result via email"""
@@ -255,7 +252,7 @@ async def send_result_email(notice: str, last4: str, email: str, result: dict):
     🤖 Generated with Claude Code
     """
     
-    return await send_email_via_cloudmailin(
+    return await send_email_via_mailgun(
         to_email=email,
         subject=subject, 
         html_body=html_body,
