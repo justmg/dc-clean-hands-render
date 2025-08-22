@@ -313,25 +313,31 @@ async def run_clean_hands(req: CleanHandsRequest, bg: BackgroundTasks):
     Returns: { "status": "compliant|noncompliant|unknown", "notice", "last4", "email_enqueued": true }
     Sends email (in background) via CloudMailin with attached PDF if available.
     """
-    # Configure browser profile with explicit executable path for Heroku
+    # Configure browser profile with system Chromium for Heroku
     chrome_paths = [
-        "/app/.cache/ms-playwright/chromium-1181/chrome-linux/chrome",
-        "/app/.cache/ms-playwright/chromium-1181/chrome",
         "/usr/bin/chromium-browser",
-        "/usr/bin/google-chrome-stable",
-        "/usr/bin/google-chrome"
+        "/usr/bin/google-chrome-stable", 
+        "/usr/bin/google-chrome",
+        "/snap/bin/chromium",
+        "/app/.cache/ms-playwright/chromium-1181/chrome-linux/chrome"
     ]
     
     chrome_path = None
     for path in chrome_paths:
         if Path(path).exists():
             chrome_path = path
+            print(f"Found Chrome at: {chrome_path}")
             break
+    
+    if not chrome_path:
+        print("No Chrome executable found, using system default")
         
     profile = BrowserProfile(
         headless=True, 
         downloads_path=str(ARTIFACTS_DIR),
-        executable_path=chrome_path
+        executable_path=chrome_path,
+        # Override browser type to use system Chrome instead of Playwright
+        browser="chromium" if chrome_path and "chromium" in chrome_path else "chrome"
     )
     session = BrowserSession(browser_profile=profile)
 
