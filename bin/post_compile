@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Install Playwright browsers in Heroku
+echo "Installing Playwright browsers..."
+python -m playwright install chromium
+echo "Playwright browsers installed successfully!"
