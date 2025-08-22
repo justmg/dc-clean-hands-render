@@ -219,50 +219,75 @@ async def mock_clean_hands_workflow(notice: str, last4: str, session_id: str):
             "mode": "railway_fallback"
         }
 
-async def send_email_via_mailgun(to_email: str, subject: str, html_body: str, text_body: str, pdf_path=None):
-    """Send email via Mailgun API"""
+async def send_email_via_brevo(to_email: str, subject: str, html_body: str, text_body: str, pdf_path=None):
+    """Send email via Brevo (Sendinblue) API"""
     
-    domain = os.getenv("MAILGUN_DOMAIN")
-    api_key = os.getenv("MAILGUN_API_KEY")
+    api_key = os.getenv("BREVO_API_KEY")
     from_email = os.getenv("FROM_EMAIL", "noreply@example.com")
     from_name = os.getenv("FROM_NAME", "Clean Hands Bot")
     
-    if not domain or not api_key:
-        print("Missing Mailgun credentials - email not sent")
-        return {"status": "error", "message": "Missing Mailgun credentials"}
+    if not api_key:
+        print("Missing Brevo API key - email not sent")
+        return {"status": "error", "message": "Missing Brevo API key"}
     
-    # Mailgun API endpoint
-    url = f"https://api.mailgun.net/v3/{domain}/messages"
+    # Brevo transactional email API endpoint
+    url = "https://api.brevo.com/v3/smtp/email"
     
-    # Prepare email data
+    # Prepare email data for Brevo
     data = {
-        "from": f"{from_name} <{from_email}>",
-        "to": to_email,
+        "sender": {
+            "name": from_name,
+            "email": from_email
+        },
+        "to": [
+            {
+                "email": to_email,
+                "name": to_email.split("@")[0]
+            }
+        ],
         "subject": subject,
-        "text": text_body,
-        "html": html_body,
-        "o:tag": ["clean-hands-api", "automated", "railway"]
+        "htmlContent": html_body,
+        "textContent": text_body,
+        "tags": ["clean-hands-api", "automated", "railway"]
     }
     
-    # Basic auth with api key
-    auth = ("api", api_key)
+    # Add attachment if PDF exists
+    if pdf_path and Path(pdf_path).exists():
+        import base64
+        with open(pdf_path, "rb") as f:
+            pdf_content = base64.b64encode(f.read()).decode()
+        
+        data["attachment"] = [
+            {
+                "content": pdf_content,
+                "name": f"clean_hands_certificate.pdf"
+            }
+        ]
+    
+    headers = {
+        "accept": "application/json",
+        "api-key": api_key,
+        "content-type": "application/json"
+    }
     
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(url, data=data, auth=auth)
+            response = await client.post(url, json=data, headers=headers)
             
-        print(f"Mailgun API response: {response.status_code} - {response.text}")
+        print(f"Brevo API response: {response.status_code} - {response.text}")
         
-        if response.status_code == 200:
-            print(f"✅ Email sent successfully to {to_email}")
-            return {"status": "success", "message": "Email sent via Mailgun"}
+        if response.status_code in [200, 201]:
+            response_data = response.json()
+            message_id = response_data.get("messageId", "unknown")
+            print(f"✅ Email sent successfully to {to_email} (Message ID: {message_id})")
+            return {"status": "success", "message": f"Email sent via Brevo (ID: {message_id})"}
         else:
             print(f"❌ Email failed: {response.status_code} - {response.text}")
-            return {"status": "error", "message": f"Mailgun API error: {response.status_code}"}
+            return {"status": "error", "message": f"Brevo API error: {response.status_code}"}
             
     except Exception as e:
-        print(f"❌ Mailgun error: {str(e)}")
-        return {"status": "error", "message": f"Mailgun error: {str(e)}"}
+        print(f"❌ Brevo error: {str(e)}")
+        return {"status": "error", "message": f"Brevo error: {str(e)}"}
 
 async def send_result_email(notice: str, last4: str, email: str, result: dict):
     """Send the clean hands result via email"""
@@ -289,7 +314,7 @@ async def send_result_email(notice: str, last4: str, email: str, result: dict):
         
         <hr>
         <p><small>This is an automated message from the DC Clean Hands Checker service.</small></p>
-        <p><small>Powered by Railway</small></p>
+        <p><small>Powered by Railway & Brevo</small></p>
     </body>
     </html>
     """
@@ -304,10 +329,10 @@ async def send_result_email(notice: str, last4: str, email: str, result: dict):
     Processing Mode: {mode}
     
     This is an automated message from the DC Clean Hands Checker service.
-    Powered by Railway
+    Powered by Railway & Brevo
     """
     
-    return await send_email_via_mailgun(
+    return await send_email_via_brevo(
         to_email=email,
         subject=subject, 
         html_body=html_body,
