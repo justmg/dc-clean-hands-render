@@ -56,8 +56,8 @@ async def send_email_via_cloudmailin(to_email: str, subject: str, html_body: str
         print("Missing CloudMailin credentials - email not sent")
         return {"status": "error", "message": "Missing email credentials"}
     
-    # CloudMailin API endpoint
-    url = f"https://api.cloudmailin.com/api/v0.1/{username}/messages"
+    # CloudMailin SMTP API endpoint (not test mode)  
+    url = "https://api.cloudmailin.com/api/v0.1/messages"
     
     # Prepare email data
     data = {

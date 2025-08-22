@@ -1,1 +1,1 @@
-web: gunicorn testapi:app -w 1 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT
+web: gunicorn hybridapi:app -w 1 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT
