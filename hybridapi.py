@@ -10,6 +10,9 @@ from pydantic import BaseModel, EmailStr, Field
 from pathlib import Path
 from dotenv import load_dotenv
 
+# Runtime Chrome fix
+from runtime_fix import fix_chrome_path
+
 # Try to import browser automation - fallback if it fails
 try:
     from browser_use import BrowserProfile, BrowserSession, ActionResult
@@ -29,6 +32,10 @@ ARTIFACTS_DIR = Path(__file__).parent / "artifacts"
 ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(title="DC Clean Hands Checker - Hybrid Mode")
+
+# Fix Chrome path at startup
+print("🚀 Starting DC Clean Hands API...")
+fix_chrome_path()
 
 class CleanHandsRequest(BaseModel):
     notice: str = Field(..., min_length=5, max_length=64)
