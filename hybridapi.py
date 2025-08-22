@@ -234,7 +234,6 @@ async def send_result_email(notice: str, last4: str, email: str, result: dict):
         
         <hr>
         <p><small>This is an automated message from the DC Clean Hands Checker service.</small></p>
-        <p><small>🤖 Generated with Claude Code</small></p>
     </body>
     </html>
     """
@@ -249,7 +248,6 @@ async def send_result_email(notice: str, last4: str, email: str, result: dict):
     Processing Mode: {mode}
     
     This is an automated message from the DC Clean Hands Checker service.
-    🤖 Generated with Claude Code
     """
     
     return await send_email_via_mailgun(
