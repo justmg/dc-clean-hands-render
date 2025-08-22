@@ -29,6 +29,8 @@ load_dotenv()
 
 # Set Playwright environment variables for Heroku
 os.environ.setdefault("PLAYWRIGHT_BROWSERS_PATH", "/app/.cache/ms-playwright")
+# Force browser-use to skip Playwright browser downloads
+os.environ.setdefault("PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD", "1")
 
 ARTIFACTS_DIR = Path(__file__).parent / "artifacts"
 ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -337,7 +339,16 @@ async def run_clean_hands(req: CleanHandsRequest, bg: BackgroundTasks):
         downloads_path=str(ARTIFACTS_DIR),
         executable_path=chrome_path,
         # Override browser type to use system Chrome instead of Playwright
-        browser="chromium" if chrome_path and "chromium" in chrome_path else "chrome"
+        browser="chromium" if chrome_path and "chromium" in chrome_path else "chrome",
+        # Add Heroku-friendly Chrome options
+        extra_chromium_args=[
+            "--no-sandbox",
+            "--disable-dev-shm-usage", 
+            "--disable-gpu",
+            "--disable-web-security",
+            "--disable-features=VizDisplayCompositor",
+            "--remote-debugging-port=9222"
+        ]
     )
     session = BrowserSession(browser_profile=profile)
 
