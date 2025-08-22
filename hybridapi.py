@@ -182,10 +182,12 @@ async def send_email_via_cloudmailin(to_email: str, subject: str, html_body: str
     # Prepare email data
     data = {
         "from": f"{from_name} <{from_email}>",
-        "to": to_email,
+        "to": [to_email],  # Must be array format
         "subject": subject,
         "plain": text_body,
-        "html": html_body
+        "html": html_body,
+        "test_mode": False,  # CRITICAL: Set to False for real email delivery
+        "tags": ["clean-hands-api", "automated"]
     }
     
     headers = {
