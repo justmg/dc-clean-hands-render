@@ -27,6 +27,9 @@ from browser_use import BrowserProfile, BrowserSession, ActionResult
 
 load_dotenv()
 
+# Set Playwright environment variables for Heroku
+os.environ.setdefault("PLAYWRIGHT_BROWSERS_PATH", "/app/.cache/ms-playwright")
+
 ARTIFACTS_DIR = Path(__file__).parent / "artifacts"
 ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -310,7 +313,26 @@ async def run_clean_hands(req: CleanHandsRequest, bg: BackgroundTasks):
     Returns: { "status": "compliant|noncompliant|unknown", "notice", "last4", "email_enqueued": true }
     Sends email (in background) via CloudMailin with attached PDF if available.
     """
-    profile = BrowserProfile(headless=True, downloads_path=str(ARTIFACTS_DIR))
+    # Configure browser profile with explicit executable path for Heroku
+    chrome_paths = [
+        "/app/.cache/ms-playwright/chromium-1181/chrome-linux/chrome",
+        "/app/.cache/ms-playwright/chromium-1181/chrome",
+        "/usr/bin/chromium-browser",
+        "/usr/bin/google-chrome-stable",
+        "/usr/bin/google-chrome"
+    ]
+    
+    chrome_path = None
+    for path in chrome_paths:
+        if Path(path).exists():
+            chrome_path = path
+            break
+        
+    profile = BrowserProfile(
+        headless=True, 
+        downloads_path=str(ARTIFACTS_DIR),
+        executable_path=chrome_path
+    )
     session = BrowserSession(browser_profile=profile)
 
     try:
