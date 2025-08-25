@@ -14,10 +14,10 @@ from dotenv import load_dotenv
 try:
     from browser_use import BrowserProfile, BrowserSession, ActionResult
     BROWSER_AVAILABLE = True
-    print("✅ Browser automation available")
+    print("Browser automation available")
 except Exception as e:
     BROWSER_AVAILABLE = False
-    print(f"❌ Browser automation not available: {e}")
+    print(f"Browser automation not available: {e}")
 
 load_dotenv()
 
@@ -27,9 +27,9 @@ ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(title="DC Clean Hands Checker - Render", version="1.0.0")
 
-print("🚀 Starting DC Clean Hands API on Render...")
-print(f"🗂️ Artifacts directory: {ARTIFACTS_DIR}")
-print(f"🌐 Browser available: {BROWSER_AVAILABLE}")
+print("Starting DC Clean Hands API on Render...")
+print(f"Artifacts directory: {ARTIFACTS_DIR}")
+print(f"Browser available: {BROWSER_AVAILABLE}")
 
 class CleanHandsRequest(BaseModel):
     notice: str = Field(..., min_length=5, max_length=64, description="Notice number")
@@ -42,7 +42,7 @@ async def render_clean_hands_workflow(notice: str, last4: str, session_id: str):
     if not BROWSER_AVAILABLE:
         raise Exception("Browser automation not available")
     
-    print(f"🎭 Render: Starting browser automation for notice {notice}")
+    print(f"Render: Starting browser automation for notice {notice}")
     
     # Render-specific browser profile with system Chrome
     profile = BrowserProfile(
@@ -69,13 +69,13 @@ async def render_clean_hands_workflow(notice: str, last4: str, session_id: str):
     try:
         page = await browser_session.get_current_page()
         
-        print("🌐 Navigating to DC MyTax...")
+        print(" Navigating to DC MyTax...")
         await page.goto("https://mytax.dc.gov", wait_until="domcontentloaded", timeout=30000)
         
         # Wait for page to fully load
         await page.wait_for_timeout(3000)
         
-        print("🔍 Looking for Clean Hands validation...")
+        print(" Looking for Clean Hands validation...")
         
         # Try multiple selectors for the validation link
         validation_selectors = [
@@ -91,11 +91,11 @@ async def render_clean_hands_workflow(notice: str, last4: str, session_id: str):
             try:
                 await page.wait_for_selector(selector, timeout=5000)
                 await page.click(selector)
-                print(f"✅ Clicked validation link with selector: {selector}")
+                print(f" Clicked validation link with selector: {selector}")
                 validation_clicked = True
                 break
             except Exception as e:
-                print(f"❌ Selector failed: {selector} - {e}")
+                print(f" Selector failed: {selector} - {e}")
                 continue
         
         if not validation_clicked:
@@ -105,7 +105,7 @@ async def render_clean_hands_workflow(notice: str, last4: str, session_id: str):
         await page.wait_for_load_state("domcontentloaded")
         await page.wait_for_timeout(3000)
         
-        print("📝 Filling form...")
+        print(" Filling form...")
         
         # Fill notice number - try multiple selectors
         notice_selectors = [
@@ -123,11 +123,11 @@ async def render_clean_hands_workflow(notice: str, last4: str, session_id: str):
             try:
                 await page.wait_for_selector(selector, timeout=5000)
                 await page.fill(selector, notice)
-                print(f"✅ Notice filled with selector: {selector}")
+                print(f" Notice filled with selector: {selector}")
                 notice_filled = True
                 break
             except Exception as e:
-                print(f"❌ Notice selector failed: {selector}")
+                print(f" Notice selector failed: {selector}")
                 continue
         
         if not notice_filled:
@@ -149,11 +149,11 @@ async def render_clean_hands_workflow(notice: str, last4: str, session_id: str):
             try:
                 await page.wait_for_selector(selector, timeout=5000)
                 await page.fill(selector, last4)
-                print(f"✅ Last 4 filled with selector: {selector}")
+                print(f" Last 4 filled with selector: {selector}")
                 last4_filled = True
                 break
             except Exception as e:
-                print(f"❌ Last 4 selector failed: {selector}")
+                print(f" Last 4 selector failed: {selector}")
                 continue
         
         if not last4_filled:
@@ -174,24 +174,24 @@ async def render_clean_hands_workflow(notice: str, last4: str, session_id: str):
         for selector in submit_selectors:
             try:
                 await page.click(selector)
-                print(f"✅ Form submitted with selector: {selector}")
+                print(f" Form submitted with selector: {selector}")
                 form_submitted = True
                 break
             except Exception as e:
-                print(f"❌ Submit selector failed: {selector}")
+                print(f" Submit selector failed: {selector}")
                 continue
         
         if not form_submitted:
             raise Exception("Could not submit form")
         
-        print("⏳ Waiting for results...")
+        print(" Waiting for results...")
         await page.wait_for_load_state("networkidle", timeout=20000)
         
         # Get page content for analysis
         page_content = await page.content()
         page_text = await page.inner_text("body")
         
-        print(f"📄 Page loaded, content length: {len(page_content)} characters")
+        print(f" Page loaded, content length: {len(page_content)} characters")
         
         # Determine compliance status
         status = "unknown"
@@ -206,13 +206,13 @@ async def render_clean_hands_workflow(notice: str, last4: str, session_id: str):
         if any(keyword in page_text_lower for keyword in compliant_keywords):
             status = "compliant"
             message = "Certificate is compliant"
-            print("✅ Status: COMPLIANT")
+            print(" Status: COMPLIANT")
         elif any(keyword in page_text_lower for keyword in noncompliant_keywords):
             status = "noncompliant"
             message = "Certificate is non-compliant"
-            print("❌ Status: NON-COMPLIANT")
+            print(" Status: NON-COMPLIANT")
         else:
-            print("❓ Status: UNKNOWN")
+            print(" Status: UNKNOWN")
         
         # Try to download PDF if available
         pdf_path = None
@@ -230,19 +230,19 @@ async def render_clean_hands_workflow(notice: str, last4: str, session_id: str):
                 try:
                     element = await page.query_selector(selector)
                     if element:
-                        print(f"🔗 Found download link: {selector}")
+                        print(f" Found download link: {selector}")
                         async with page.expect_download(timeout=10000) as download_info:
                             await element.click()
                         download = await download_info.value
                         pdf_path = ARTIFACTS_DIR / f"clean_hands_{notice}_{last4}.pdf"
                         await download.save_as(pdf_path)
-                        print(f"📄 PDF downloaded to {pdf_path}")
+                        print(f" PDF downloaded to {pdf_path}")
                         break
                 except Exception as e:
-                    print(f"❌ Download attempt failed with {selector}: {e}")
+                    print(f" Download attempt failed with {selector}: {e}")
                     continue
         except Exception as e:
-            print(f"ℹ️ No PDF download available: {e}")
+            print(f" No PDF download available: {e}")
         
         await browser_session.close()
         
@@ -256,13 +256,13 @@ async def render_clean_hands_workflow(notice: str, last4: str, session_id: str):
         
     except Exception as e:
         await browser_session.close()
-        print(f"❌ Browser automation error: {e}")
+        print(f" Browser automation error: {e}")
         raise e
 
 # Mock fallback workflow
 async def mock_clean_hands_workflow(notice: str, last4: str, session_id: str):
     """Fallback mock workflow"""
-    print(f"🔄 FALLBACK: Using mock workflow for notice {notice}")
+    print(f" FALLBACK: Using mock workflow for notice {notice}")
     
     await asyncio.sleep(1)
     
@@ -292,7 +292,7 @@ async def send_email_via_brevo(to_email: str, subject: str, html_body: str, text
     from_name = os.getenv("FROM_NAME", "Clean Hands Bot")
     
     if not api_key:
-        print("❌ Missing Brevo API key - email not sent")
+        print(" Missing Brevo API key - email not sent")
         return {"status": "error", "message": "Missing Brevo API key"}
     
     # Brevo transactional email API endpoint
@@ -329,9 +329,9 @@ async def send_email_via_brevo(to_email: str, subject: str, html_body: str, text
                     "name": f"clean_hands_certificate_{notice}_{last4}.pdf"
                 }
             ]
-            print(f"📎 PDF attachment added: {pdf_path}")
+            print(f" PDF attachment added: {pdf_path}")
         except Exception as e:
-            print(f"❌ Failed to attach PDF: {e}")
+            print(f" Failed to attach PDF: {e}")
     
     headers = {
         "accept": "application/json",
@@ -343,19 +343,19 @@ async def send_email_via_brevo(to_email: str, subject: str, html_body: str, text
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(url, json=data, headers=headers)
             
-        print(f"📧 Brevo API response: {response.status_code} - {response.text}")
+        print(f" Brevo API response: {response.status_code} - {response.text}")
         
         if response.status_code in [200, 201]:
             response_data = response.json()
             message_id = response_data.get("messageId", "unknown")
-            print(f"✅ Email sent successfully to {to_email} (Message ID: {message_id})")
+            print(f" Email sent successfully to {to_email} (Message ID: {message_id})")
             return {"status": "success", "message": f"Email sent via Brevo (ID: {message_id})"}
         else:
-            print(f"❌ Email failed: {response.status_code} - {response.text}")
+            print(f" Email failed: {response.status_code} - {response.text}")
             return {"status": "error", "message": f"Brevo API error: {response.status_code}"}
             
     except Exception as e:
-        print(f"❌ Brevo error: {str(e)}")
+        print(f" Brevo error: {str(e)}")
         return {"status": "error", "message": f"Brevo error: {str(e)}"}
 
 async def send_result_email(notice: str, last4: str, email: str, result: dict):
@@ -435,7 +435,7 @@ async def root():
 async def render_clean_hands(req: CleanHandsRequest, bg: BackgroundTasks):
     """Render endpoint: real browser automation with mock fallback"""
     
-    print(f"🚀 RENDER: Processing notice {req.notice}, last4 {req.last4}, email {req.email}")
+    print(f" RENDER: Processing notice {req.notice}, last4 {req.last4}, email {req.email}")
     
     session_id = f"render-{req.notice}-{req.last4}"
     
@@ -443,15 +443,15 @@ async def render_clean_hands(req: CleanHandsRequest, bg: BackgroundTasks):
         # Try real browser automation first
         if BROWSER_AVAILABLE:
             try:
-                print("🎭 Attempting Render browser automation...")
+                print(" Attempting Render browser automation...")
                 result = await render_clean_hands_workflow(req.notice, req.last4, session_id)
-                print(f"✅ Render browser automation succeeded: {result['status']}")
+                print(f" Render browser automation succeeded: {result['status']}")
             except Exception as browser_error:
-                print(f"❌ Render browser automation failed: {str(browser_error)}")
-                print("🔄 Falling back to mock workflow...")
+                print(f" Render browser automation failed: {str(browser_error)}")
+                print(" Falling back to mock workflow...")
                 result = await mock_clean_hands_workflow(req.notice, req.last4, session_id)
         else:
-            print("❌ Browser not available, using mock workflow...")
+            print(" Browser not available, using mock workflow...")
             result = await mock_clean_hands_workflow(req.notice, req.last4, session_id)
         
         # Send email in background
@@ -469,7 +469,7 @@ async def render_clean_hands(req: CleanHandsRequest, bg: BackgroundTasks):
         }
         
     except Exception as e:
-        print(f"❌ Error in Render workflow: {str(e)}")
+        print(f" Error in Render workflow: {str(e)}")
         return {
             "status": "error",
             "notice": req.notice,
@@ -483,5 +483,5 @@ async def render_clean_hands(req: CleanHandsRequest, bg: BackgroundTasks):
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", "8000"))
-    print(f"🚀 Starting Render API on port {port}")
+    print(f" Starting Render API on port {port}")
     uvicorn.run("render_api:app", host="0.0.0.0", port=port, reload=True)
